@@ -1,57 +1,70 @@
 #!/usr/bin/python3
 
-import hashlib
+from hashlib import sha256
 import os
 import sys
 import uuid
 import binascii
 import struct
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument('param') # add, checkout, checkin, log, remove, init, verify
+parser.add_argument('-c') # caseID
+parser.add_argument('-i') # itemID
+parser.add_argument('-r', '--reverse')
+parser.add_argument('-n') # num_entries
+parser.add_argument('-y', '--why') # reason
+parser.add_argument('-o') # owner
+args = parser.parse_args()
 
 class bchoc:
-	def init(self, previous_block_hash, timestamp, caseID, evidenceID_list, state, length, data):
+	def __init__(self, previous_block_hash, timestamp, caseID, evidenceID, state, length, data):
 		self.previous_block_hash = previous_block_hash
 		self.timestamp = timestamp
 		self.caseID = caseID
-		self.evidenceID_list = evidenceID_list
+		self.evidenceID = evidenceID
 		self.state = state
 		self.length = length
 		self.data = data
 		
-		self.block_data = struct.pack('32s d 16s I 12s I', previous_block_hash.encode('utf-8'), timestamp, caseID.encode('utf-8'), evidenceID_list, state.encode('utf-8'), length)
-		self.block_hash = hashlib.sha256(self.block_data).hexdigest()
+		self.block_data = struct.pack('32s d 16s I 12s I', previous_block_hash.encode('utf-8'), timestamp, caseID.encode('utf-8'), evidenceID, state.encode('utf-8'), length)
+		self.block_hash = sha256(self.block_data).hexdigest()
 		
+	def test(self):
+		print(sha256(self))
 
-t0 = ""
 
 
-if (sys.argv[1]=='init' and len(sys.argv)<3):
+
+# creates an initial block
+def create():
+	data = 'Initial block\0'
+	state = 'INITIAL'
+	#datetime.utcnow().isoformat()
+	initial_block = bchoc('', datetime.utcnow().timestamp(), '', 0, state, len(bytes(data, 'utf-8')), data)
+	f = open(os.environ.get('BCHOC_FILE_PATH', 'test.txt'), 'w+b')
+	f.close()
+
+#if args.param == 'add':
+#elif args.param == 'checkout':
+#elif args.param == 'checkin':
+#elif args.param == 'log':
+#elif args.param == 'remove':
+if args.param == 'init':
 	t0 = Path(os.environ.get('BCHOC_FILE_PATH', 'test.txt'))
 	if t0.is_file():
-		t1 = os.path.getsize(t0)
-		if t1>70:
-			k = open(t0, 'rb')
-			content = k.read()
-			print('the content of text file is ', content)
+		if os.path.getsize(t0) >= 70:
 			print('Blockchain file found with INITIAL block.')
 		else:
-			sys.exit(1)
+			sys.exit('invalid file')
 	else:
 		print('Blockchain file not found. Created INITIAL block.')
-		data = 'Initial block\0'
-		state = 'INITIAL'
-		statepaded = state.ljust(12, '\0')
-		initial_block = bchoc('', datetime.now().timestamp(), '', 0, statepaded, len(data), data)
-		f = open(os.environ.get('BCHOC_FILE_PATH', 'test.txt'), 'w+b')
-		print(len(data))
-		print(binascii.hexlify(initial_block.block_data))
-		f.close()
-elif sys.argv[1] == 'add':
-	k = open(os.environ.get('BCHOC_FILE_PATH'), 'rb')
-	content = k.read()
-	data = ''
+		create()
+#elif args.param == 'verify':
 else:
-	sys.exit(1)
-			
+	exit(1)
+
 			
